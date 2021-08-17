@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html><head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <script src="lib/three.min.js"></script>
+  <script src="lib/orbitcontrols.js"></script>
+  <!-- fallback if no WebGL -->
+  <script src="lib/projector.js"></script>
+  <script src="lib/canvasrenderer.js"></script>
+  <script src="lib/jquery-2.1.3.min.js"></script>
+  <script src="src/csg.js"></script>
+  <script src="src/threecsg.js"></script>
+  <script src="src/openjscad.js"></script>
+  <script src="src/formats.js"></script>
+  <style>
+
+body {
+  font: 14px/20px 'Helvetica Neue Light', HelveticaNeue-Light, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+pre, code, textarea {
+  font: 12px/20px Monaco, monospace;
+  border: 1px solid #CCC;
+  border-radius: 3px;
+  background: #F9F9F9;
+  padding: 0 3px;
+  color: #555;
+}
+pre, textarea {
+  padding: 10px;
+  width: 100%;
+}
+textarea {
+  height: 200px;
+}
+textarea:focus {
+  outline: none;
+}
+
+canvas { cursor: move; }
+
+  </style>
+<link rel="stylesheet" href="openjscad.css" type="text/css">
+
+<script>
+
+var gProcessor=null;
+
+// Show all exceptions to the user:
+OpenJsCad.AlertUserOfUncaughtExceptions();
+
+function onload()
+{
+  gProcessor = new OpenJsCad.Processor(document.getElementById("viewer"));
+  updateSolid();
+}
+
+function updateSolid()
+{
+gProcessor.setJsCad(document.getElementById('code').value);
+}
+function getExample(name) {
+  var el = document.getElementById('code');
+  $.get('examples/' + name, function(data) {
+    el.value = data;
+    updateSolid();
+  });
+}
+
+</script>
+<title>Parametric Cup Generator</title>  
+</head>
+<body onload="onload()">
+<h1>Parametric Cup Generator</h1>
+<h3>For the Cups and Balls Routine</h3>
+<h4>By Brandon Gruber</h4>
+<div id="viewer"></div>
+<h2>Playground</h2>
+You can also directly edit the javascript below for this model. Beware that all changes will be lost when you navigate away from the page.
+<br><br>
+
+<textarea id="code">
+
+    function main(params)
+{
+
+    let rings = cup_rings(params).setColor([0, 1, 0]);
+    let body  = cup_body(params).setColor([0, 0, 1]);
+    let top = cup_top(params).setColor([1, 1, 0]);
+    return rings.union(body).union(top);
+
+}
+
+function ring(z=100, params)
+{
+    let cup_radius = params.cup_inner_diameter/2 + params.material_thickness;
+    var points = [];
+    let width = params.ring_height;//ring_height is the width of the curve
+    let height = params.ring_width;//ring_width is the hight of the curve
+    for(var x = 0; x <= width; ++x)
+    {
+            let y = 0;
+            switch(params.ring_style)
+            {
+              case "ROOT":
+                //Rounded
+                y = (height/Math.sqrt(width/4))*Math.sqrt(x - (Math.pow(x,2)/width));
+              break;
+              case "POLY":
+                //Rounded-square
+                y = height*(1-Math.pow((2*x-width)/width,2+(2*params.squareness)));
+              break;
+              default:
+                //Can be more triangularly rounded (sin wave)
+                y = height*Math.sin((Math.PI*x)/width);
+            }
+            if (Number.isNaN(y))
+              y = 0;
+            points.push(new CSG.Vector2D(y, x));
+    }
+
+    let result = new CSG.Polygon2D(points);
+    //result = result.extrude({"offset":[0,0,1]});//test line to just inspect the polygon shape
+    result = result.translate([cup_radius, 0, 0]).rotateExtrude({"resolution":params.render_quality});
+    return result.translate([0, 0, z]);//move to the correct Z location
+}
+
+function cup_rings(params){
+    let rings;
+    for(let i = 0; i < params.number_of_rings; ++i)
+    {
+        let r;
+        if((i%2) == 0)
+        {
+            r  = ring((i/2)*(params.ring_spacing+params.ring_height), params);
+        }
+        else{
+            r = ring((params.cup_bottom_height-params.ring_height)-(((i-1)/2)*(params.ring_spacing+params.ring_height)), params);
+        }
+        if( i == 0 )
+        {
+            rings = r;
+        }
+        else
+        {
+            rings = rings.union(r);
+        }
+    }
+    return rings;
+}
+
+function cup_body(params)
+{
+  let radius = params.cup_inner_diameter/2;
+  var outer = CSG.cylinder({
+    start: [0, 0, 0],
+    end: [0, params.cup_bottom_height, 0],
+    radius: params.material_thickness + radius,
+    resolution: 100        // optional
+  });
+  var inner = CSG.cylinder({
+    start: [0, -5, 0],
+    end: [0, params.cup_bottom_height+5, 0],
+    radius: radius,
+    resolution: 100        // optional
+  });
+  return outer.subtract(inner).rotateX(90);
+}
+
+
+function top_shape_polynomial(x, w, h, sq)
+  {
+    return h-h*Math.pow(x/w,(1*(1+sq/10)));
+  }
+
+
+function cup_top(params)
+{
+
+    let br = params.cup_top_outer_diameter/2;
+    let w_inner = (params.cup_inner_diameter/2)-br;
+    let w_outer = w_inner+params.material_thickness;
+
+    let indent_radius = (params.cup_top_inner_diameter < params.cup_top_outer_diameter) ? params.cup_top_inner_diameter/2 : params.cup_top_outer_diameter/2;
+
+    /*create outer portion of the cup*/
+    let points = [];
+    points.push( new CSG.Vector2D(0, params.cup_top_height-params.cup_top_indent) );
+    points.push( new CSG.Vector2D(indent_radius, params.cup_top_height-params.cup_top_indent ) );
+    for(let x = 0;x <= w_outer; ++x){
+        let y = top_shape_polynomial(x, w_outer, params.cup_top_height, params.cup_top_squareness);
+        //console.log(x, y);
+        points.push( new CSG.Vector2D(x+br, y ));
+    }
+    points.push( new CSG.Vector2D(0,0) );
+    let outer = new CSG.Polygon2D(points);
+
+    /*create inner portion of the cup*/
+    points = [];
+    points.push( new CSG.Vector2D(0, params.cup_top_height-params.cup_top_indent-params.material_thickness) );
+    points.push( new CSG.Vector2D(indent_radius, params.cup_top_height-params.cup_top_indent-params.material_thickness ) );
+    for(let x = 0; x <= w_inner+1; ++x){
+        let y = top_shape_polynomial(x, w_inner, params.cup_top_height-params.material_thickness, params.cup_top_squareness);
+        points.push( new CSG.Vector2D(x+br, y ));
+    }
+    points.push( new CSG.Vector2D(0,0) );
+    let inner = new CSG.Polygon2D(points);
+
+    let shell = outer.subtract(inner);
+    shell = shell.rotateExtrude({"resolution":params.render_quality});
+    return shell.translate([0, 0, params.cup_bottom_height-5]);//move to the correct Z location
+
+}
+
+// Here we define the user editable parameters: 
+function getParameterDefinitions() {
+  return [
+    {
+      name: 'render_quality',
+      type: 'choice',
+      values: [32, 64, 128],
+      captions: ["Preview/Faster", "Medium", "High/Best"],
+      caption: 'Render Quality:',
+      initial: 32,
+    },
+    { name: 'cup_inner_diameter', caption: 'Inside Diameter:', type: 'int', default: 300 },
+    { name: 'cup_top_height', caption: 'Top Height:', type: 'int', default: 150 },
+    { name: 'cup_bottom_height', caption: 'Bottom Height:', type: 'int', default: 150},
+    { name: 'cup_top_outer_diameter', caption: 'Top Outer Diameter:', type: 'int', default: 125 },
+    { name: 'cup_top_inner_diameter', caption: 'Top Inner Diameter:', type: 'int', default: 20 },
+    { name: 'cup_top_squareness', caption: 'Top Squareness:', type: 'int', default: 33 },
+    { name: 'cup_top_indent', caption: 'Top Indent Depth:', type: 'int', default: 10 },
+    { name: 'material_thickness', caption: 'Cup Thickness', type: 'int', default: 5},
+    { name: 'number_of_rings', caption: 'Number Of Rings', type: 'int', default: 2},
+    { name: 'ring_spacing', caption: 'Ring Spacing', type: 'int', default: 20},
+    {
+      name: 'ring_style',
+      type: 'choice',
+      values: ["ROOT", "POLY", "SIN"],
+      captions: ["Rounded", "Rounded-Square", "Steep-Rounded"],
+      caption: 'Ring Curve Style:',
+      initial: "ROOT",
+    },
+    { name: 'ring_width', caption: 'Ring Width:', type: 'int', default: 20},
+    { name: 'ring_height', caption: 'Ring Height:', type: 'int', default: 20},
+    { name: 'ring_squareness', caption: 'Ring Squareness:', type: 'int', default: 2}
+  ];
+}
+
+</textarea><br>
+<input type="submit" value="Update" onclick="updateSolid(); return false;">
+<br>
+
+<h2>About This Page</h2>
+This is a page forked from the OpenJs page to generate a custom cup for the cups and balls routine. Tweak the parameters as desired, then download the model with "Generate STL button".
+
+<h2>About OpenJsCAD</h2>
+OpenJsCad is a 2D and 3D modeling tool similar to <a href="http://www.openscad.org/">OpenSCAD</a>,
+but web based and using Javascript language.
+
+
+<h2>Viewer navigation</h2>
+Click and drag to rotate the model around the origin. Hold down Alt to change the axis of rotation. 
+Shift+Drag moves the model around. Zoom using the mouse wheel or using the slider below the model.
+<h2>Tools, Libraries</h2>
+
+<h2>Original OpenJsCAD License</h2>
+OpenJsCad is developed by <a href="https://github.com/joostn">Joost Nieuwenhuijse</a>.
+Based on <a href="https://github.com/evanw/csg.js">initial CSG.js</a> copyright (c) 2011 <a href="https://github.com/evanw">Evan Wallace</a>.
+Uses <a href="https://github.com/evanw/lightgl.js">lightgl.js</a> by <a href="https://github.com/evanw">Evan Wallace</a> 
+and <a href="https://github.com/toaarnio">Tomi Aarnio</a> for WebGL rendering. 
+Contributions by <a href="https://github.com/alx">Alexandre Girard</a>, 
+ <a href="https://github.com/tlrobinson">Tom Robinson</a>,
+ <a href="https://github.com/jboecker">jboecker</a>,
+ <a href="https://github.com/risacher">risacher</a>,
+ <a href="https://github.com/tedbeer">tedbeer</a>,
+ <a href="https://github.com/bebbi">bebbi</a>,
+ <a href="https://github.com/sahilshekhawat">Sahil Shekhawat</a>.
+All code released under MIT license.
+<br><br>
+Contributions are welcome! It's all written in Javascript, so if you know how to use it you
+know how to modify it as well.
+To contribute go to <a href="https://github.com/joostn/OpenJsCad/tree/gh-pages">OpenJsCad at GitHub (gh-pages tree)</a>,
+<a href="http://help.github.com/fork-a-repo/">create your own fork</a> and 
+<a href="http://help.github.com/send-pull-requests/">send me a pull request</a>. Note that the code is maintained 
+in the gh-pages branch, not the master branch. This is so that it can be accessed directly via Github pages.
+
+
+</body>
+</html>

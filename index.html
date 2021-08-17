@@ -87,10 +87,14 @@ You can also directly edit the javascript below for this model. Beware that all 
     function main(params)
 {
 
-    let rings = cup_rings(params).setColor([0, 1, 0]);
-    let body  = cup_body(params).setColor([0, 0, 1]);
-    let top = cup_top(params).setColor([1, 1, 0]);
-    return rings.union(body).union(top);
+    let color = [0.90, 0.50, 0.24];
+    let rings = cup_rings(params).setColor(color);
+    let body  = cup_body(params).setColor(color);
+    let top = cup_top(params).setColor(color);
+    if(rings)
+        return rings.union(body).union(top);
+    else
+        return body.union(top);
 
 }
 
@@ -195,6 +199,7 @@ function cup_top(params)
         //console.log(x, y);
         points.push( new CSG.Vector2D(x+br, y ));
     }
+    points.push( new CSG.Vector2D(params.cup_inner_diameter/2 + params.material_thickness, 0) );
     points.push( new CSG.Vector2D(0,0) );
     let outer = new CSG.Polygon2D(points);
 
@@ -202,16 +207,23 @@ function cup_top(params)
     points = [];
     points.push( new CSG.Vector2D(0, params.cup_top_height-params.cup_top_indent-params.material_thickness) );
     points.push( new CSG.Vector2D(indent_radius, params.cup_top_height-params.cup_top_indent-params.material_thickness ) );
-    for(let x = 0; x <= w_inner+1; ++x){
+    for(let x = 0; x <= w_inner; ++x){
         let y = top_shape_polynomial(x, w_inner, params.cup_top_height-params.material_thickness, params.cup_top_squareness);
         points.push( new CSG.Vector2D(x+br, y ));
     }
+    points.push( new CSG.Vector2D(params.cup_inner_diameter/2, -1) );
     points.push( new CSG.Vector2D(0,0) );
     let inner = new CSG.Polygon2D(points);
 
+    /* To test the shape uncomment
+    outer = outer.extrude([0,0,1]).setColor([1, 0, 0]);
+    inner = inner.extrude([0,0,2]).setColor([0, 1, 0]);
+    return inner.union(outer);
+    */
+
     let shell = outer.subtract(inner);
     shell = shell.rotateExtrude({"resolution":params.render_quality});
-    return shell.translate([0, 0, params.cup_bottom_height-5]);//move to the correct Z location
+    return shell.translate([0, 0, params.cup_bottom_height]);//move to the correct Z location
 
 }
 
@@ -234,8 +246,8 @@ function getParameterDefinitions() {
     { name: 'cup_top_squareness', caption: 'Top Squareness:', type: 'int', default: 33 },
     { name: 'cup_top_indent', caption: 'Top Indent Depth:', type: 'int', default: 10 },
     { name: 'material_thickness', caption: 'Cup Thickness', type: 'int', default: 5},
-    { name: 'number_of_rings', caption: 'Number Of Rings', type: 'int', default: 2},
-    { name: 'ring_spacing', caption: 'Ring Spacing', type: 'int', default: 20},
+    { name: 'number_of_rings', caption: 'Number Of Rings', type: 'int', default: 3},
+    { name: 'ring_spacing', caption: 'Ring Spacing', type: 'int', default: 30},
     {
       name: 'ring_style',
       type: 'choice',
@@ -244,8 +256,8 @@ function getParameterDefinitions() {
       caption: 'Ring Curve Style:',
       initial: "ROOT",
     },
-    { name: 'ring_width', caption: 'Ring Width:', type: 'int', default: 20},
-    { name: 'ring_height', caption: 'Ring Height:', type: 'int', default: 20},
+    { name: 'ring_width', caption: 'Ring Width:', type: 'int', default: 15},
+    { name: 'ring_height', caption: 'Ring Height:', type: 'int', default: 30},
     { name: 'ring_squareness', caption: 'Ring Squareness:', type: 'int', default: 2}
   ];
 }

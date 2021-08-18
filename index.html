@@ -86,15 +86,46 @@ You can also directly edit the javascript below for this model. Beware that all 
 
     function main(params)
 {
+    if( undefined === params.number_of_rings )
+        params.number_of_rings = 0;
 
-    let color = [0.90, 0.50, 0.24];
-    let rings = cup_rings(params).setColor(color);
-    let body  = cup_body(params).setColor(color);
-    let top = cup_top(params).setColor(color);
-    if(rings)
-        return rings.union(body).union(top);
+    //Determine the preview colors.
+    let cup_color = null;
+    let ring_color = null;
+    switch(params.color)
+    {
+        case "C"://copper
+            cup_color = [0.90, 0.50, 0.24];
+            ring_color = cup_color;
+        break;
+        case "S"://silver
+            cup_color = [192/255, 192/255, 192/255];
+            ring_color = cup_color;
+        break;
+        case "G"://gold
+            cup_color = [1, 215/255, 0];
+            ring_color = cup_color;
+        break;
+        case "SG"://silver cup and gold rings
+            cup_color = [192/255, 192/255, 192/255];
+            ring_color = [1, 215/255, 0];
+        break;
+    }
+
+    //create the top and the bottom as one
+    let body_and_top = cup_body(params).union(cup_top(params)).setColor(cup_color);
+
+    //rings are handled separately because there may not be any if you set number_of_rings to 0, and they may be a different color that the body.
+    if(params.number_of_rings){
+        //rings + body + top
+        let rings = cup_rings(params).setColor(ring_color);
+        return rings.union(body_and_top);
+    }
     else
-        return body.union(top);
+    {
+        //only body + top. Dont know why you would want that but there you go.
+        return body_and_top;
+    }
 
 }
 
@@ -258,7 +289,15 @@ function getParameterDefinitions() {
     },
     { name: 'ring_width', caption: 'Ring Width:', type: 'int', default: 15},
     { name: 'ring_height', caption: 'Ring Height:', type: 'int', default: 30},
-    { name: 'ring_squareness', caption: 'Ring Squareness:', type: 'int', default: 2}
+    { name: 'ring_squareness', caption: 'Ring Squareness:', type: 'int', default: 2},
+    {
+      name: 'color',
+      type: 'choice',
+      values: ["C", "S", "G", "SG"],
+      captions: ["Copper", "Silver", "Gold", "Silver & Gold"],
+      caption: 'Preview Color:',
+      initial: "COPPER",
+    },
   ];
 }
 

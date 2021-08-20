@@ -1279,6 +1279,7 @@ OpenJsCad.Processor.prototype = {
     this.paramControls = [];
     var paramControls = [];
     var tablerows = [];
+    var that = this;
     for(var i = 0; i < this.paramDefinitions.length; i++)
     {
       var errorprefix = "Error in parameter definition #"+(i+1)+": ";
@@ -1396,6 +1397,19 @@ OpenJsCad.Processor.prototype = {
           control.checked = false;
         }
       }
+      control.onchange = (e) => {
+        console.debug(e.target.name, e.target.value);
+        var paramsUpdatedEvent = new CustomEvent("paramsUpdatedEvent",
+            {
+                detail:{
+                    param: e.target.name,
+                    value: e.target.value
+                }
+            }
+        );
+        document.dispatchEvent(paramsUpdatedEvent);
+      };
+      control.name = paramdef.name;
       paramControls.push(control);
       var tr = document.createElement("tr");
       var td = document.createElement("td");
@@ -1416,7 +1430,6 @@ OpenJsCad.Processor.prototype = {
       tr.appendChild(td);
       tablerows.push(tr);
     }
-    var that = this;
     tablerows.map(function(tr){
       that.parameterstable.appendChild(tr);
     });

@@ -54,6 +54,10 @@ OpenJsCad.AlertUserOfUncaughtExceptions();
 
 function onload()
 {
+    document.addEventListener("paramsUpdatedEvent", function(e){
+        //console.debug("Caught event!:",e.detail);
+        gProcessor.rebuildSolid();
+        }, false);
   gProcessor = new OpenJsCad.Processor(document.getElementById("viewer"));
   updateSolid();
 }
@@ -75,7 +79,7 @@ function getExample(name) {
 </head>
 <body onload="onload()">
 <h1>Parametric Cup Generator</h1>
-<h4>For the Cups and Balls Routine - By Brandon Gruber - Last Updated 8/18/2021</h4>
+<h5>For the Cups and Balls Routine by Brandon Gruber - Last Updated 8/20/2021</h5>
 <div id="viewer"></div>
 <h2>Playground</h2>
 You can also directly edit the javascript below for this model. Beware that all changes will be lost when you navigate away from the page.
@@ -290,7 +294,7 @@ function getParameterDefinitions()
       name: 'render_quality',
       type: 'choice',
       values: ["PREVIEW", "OK", "BEST"],
-      captions: ["Preview/Faster", "Medium", "High/Best"],
+      captions: ["Preview/Faster", "Medium", "High/Best/(May take minutes to render)"],
       caption: 'Render Quality:',
       initial: "PREVIEW",
     },

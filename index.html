@@ -133,19 +133,19 @@ function main(params)
 
     }
 
-    //create the top and the bottom as one
-    let body_and_top = cup_body(params).union(cup_top(params)).setColor(cup_color);
+    //create the body of the cup
+    let cup = cup_body(params).setColor(cup_color);
 
     //rings are handled separately because there may not be any if you set number_of_rings to 0, and they may be a different color that the body.
     if(params.number_of_rings){
         //rings + body + top
         let rings = cup_rings(params).setColor(ring_color);
-        return rings.union(body_and_top);
+        return cup.union(rings);
     }
     else
     {
         //only body + top. Dont know why you would want that but there you go.
-        return body_and_top;
+        return cup;
     }
 
 }
@@ -209,23 +209,6 @@ function cup_rings(params)
     return rings;
 }
 
-function cup_body(params)
-{
-  let radius = params.cup_inner_diameter/2;
-  var outer = CSG.cylinder({
-    start: [0, 0, 0],
-    end: [0, params.cup_bottom_height, 0],
-    radius: params.material_thickness + radius,
-    resolution: 100        // optional
-  });
-  var inner = CSG.cylinder({
-    start: [0, -5, 0],
-    end: [0, params.cup_bottom_height+5, 0],
-    radius: radius,
-    resolution: 100        // optional
-  });
-  return outer.subtract(inner).rotateX(90);
-}
 
 /*****************************************
 * Generates the curve for the top.
@@ -240,7 +223,7 @@ function top_shape_polynomial(x, w, h, sq)
 }
 
 
-function cup_top(params)
+function cup_body(params)
 {
 
     let br = params.cup_top_outer_diameter/2;
@@ -249,39 +232,36 @@ function cup_top(params)
 
     let indent_radius = (params.cup_top_inner_diameter < params.cup_top_outer_diameter) ? params.cup_top_inner_diameter/2 : params.cup_top_outer_diameter/2;
 
-    /*create outer portion of the cup*/
+    /*create outer points of the cup*/
     let points = [];
     points.push( new CSG.Vector2D(0, params.cup_top_height-params.cup_top_indent) );
     points.push( new CSG.Vector2D(indent_radius, params.cup_top_height-params.cup_top_indent ) );
     for(let x = 0;x <= w_outer; x += params.curve_generation_resolution){
         let y = top_shape_polynomial(x, w_outer, params.cup_top_height, params.cup_top_squareness);
-        //console.log(x, y);
+
         points.push( new CSG.Vector2D(x+br, y ));
     }
-    points.push( new CSG.Vector2D(params.cup_inner_diameter/2 + params.material_thickness, 0) );
-    points.push( new CSG.Vector2D(0,0) );
-    let outer = new CSG.Polygon2D(points);
 
-    /*create inner portion of the cup*/
-    points = [];
-    points.push( new CSG.Vector2D(0, params.cup_top_height-params.cup_top_indent-params.material_thickness) );
-    points.push( new CSG.Vector2D(indent_radius, params.cup_top_height-params.cup_top_indent-params.material_thickness ) );
-    for(let x = 0; x <= w_inner; x += params.curve_generation_resolution){
+    /* bottom two make the bottom of the cup */
+    points.push( new CSG.Vector2D(params.cup_inner_diameter/2 + params.material_thickness, params.cup_bottom_height*-1) );
+    points.push( new CSG.Vector2D(params.cup_inner_diameter/2, params.cup_bottom_height*-1) );
+
+    /*create inner points of the cup*/
+    for(let x = w_inner; x >= 0; x -= params.curve_generation_resolution){
         let y = top_shape_polynomial(x, w_inner, params.cup_top_height-params.material_thickness, params.cup_top_squareness);
         points.push( new CSG.Vector2D(x+br, y ));
     }
-    points.push( new CSG.Vector2D(params.cup_inner_diameter/2, -1) );
-    points.push( new CSG.Vector2D(0,0) );
-    let inner = new CSG.Polygon2D(points);
+    points.push( new CSG.Vector2D(indent_radius, params.cup_top_height-params.cup_top_indent-params.material_thickness ) );
+    points.push( new CSG.Vector2D(0, params.cup_top_height-params.cup_top_indent-params.material_thickness) );
 
-    /* To test the shape uncomment
-    outer = outer.extrude([0,0,1]).setColor([1, 0, 0]);
-    inner = inner.extrude([0,0,2]).setColor([0, 1, 0]);
-    return inner.union(outer);
-    */
+    let top = new CSG.Polygon2D(points);
 
-    let shell = outer.subtract(inner);
-    shell = shell.rotateExtrude({"resolution":params.rotate_extrude_resolution});
+    // To test the shape uncomment
+    //return top.extrude([0,0,1]).setColor([1, 0, 0]).rotateX(90);
+    //return inner.union(outer);
+
+    /* rotate extrude spins the shape around the Z axis */
+    let shell = top.rotateExtrude({"resolution":params.rotate_extrude_resolution});
     return shell.translate([0, 0, params.cup_bottom_height]);//move to the correct Z location
 
 }

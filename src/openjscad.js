@@ -1409,7 +1409,7 @@ OpenJsCad.Processor.prototype = {
         );
         document.dispatchEvent(paramsUpdatedEvent);
       };
-      control.name = paramdef.name;
+      control.id = "param." + paramdef.name;
       paramControls.push(control);
       var tr = document.createElement("tr");
       var td = document.createElement("td");

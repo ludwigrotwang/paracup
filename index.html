@@ -74,12 +74,83 @@ function getExample(name) {
   });
 }
 
+function update_parameter(name, value)
+{
+    let param = document.getElementById("param."+name);
+    param.value = value;
+}
+
+function loadExample(exampleNo)
+{
+
+    switch(exampleNo)
+    {
+        case "1":
+
+            update_parameter("cup_inner_diameter", 60);
+            update_parameter("cup_top_height", 30);
+            update_parameter("cup_bottom_height", 30);
+            update_parameter("cup_top_outer_diameter", 30);
+            update_parameter("cup_top_inner_diameter", 10);
+            update_parameter("cup_top_squareness", 22);
+            update_parameter("cup_top_indent", 2);
+            update_parameter("material_thickness", 1);
+            update_parameter("number_of_rings", 3);
+            update_parameter("ring_spacing", 6);
+            update_parameter("ring_style", "ROOT");
+            update_parameter("ring_width", 3);
+            update_parameter("ring_height", 6);
+            update_parameter("ring_squareness", 2);
+            update_parameter("color", "SG");
+
+        break;
+        case "2":
+
+            update_parameter("cup_inner_diameter", 60);
+            update_parameter("cup_top_height", 60);
+            update_parameter("cup_bottom_height", 25);
+            update_parameter("cup_top_outer_diameter", 35);
+            update_parameter("cup_top_inner_diameter", 10);
+            update_parameter("cup_top_squareness", 0);
+            update_parameter("cup_top_indent", 2);
+            update_parameter("material_thickness", 1);
+            update_parameter("number_of_rings", 1);
+            update_parameter("ring_spacing", 0);
+            update_parameter("ring_style", "POLY");
+            update_parameter("ring_width", 2);
+            update_parameter("ring_height", 27);
+            update_parameter("ring_squareness", 10);
+            update_parameter("color", "S");
+
+        break;
+        case "3":
+            update_parameter("cup_inner_diameter", 60);
+            update_parameter("cup_top_height", 50);
+            update_parameter("cup_bottom_height", 30);
+            update_parameter("cup_top_outer_diameter", 30);
+            update_parameter("cup_top_inner_diameter", 20);
+            update_parameter("cup_top_squareness", 20);
+            update_parameter("cup_top_indent", 2);
+            update_parameter("material_thickness", 1);
+            update_parameter("number_of_rings", 2);
+            update_parameter("ring_spacing", 6);
+            update_parameter("ring_style", "SIN");
+            update_parameter("ring_width", 3);
+            update_parameter("ring_height", 7);
+            update_parameter("ring_squareness", 2);
+            update_parameter("color", "C");
+        break;
+    }
+    gProcessor.rebuildSolid();
+}
+
 </script>
 <title>Parametric Cup Generator</title>  
 </head>
 <body onload="onload()">
 <h1>Parametric Cup Generator</h1>
-<h5>For the Cups and Balls Routine by Brandon Gruber - Last Updated 8/20/2021</h5>
+<h5>For the Cups and Balls Routine by Brandon Gruber - Last Updated 8/24/2021</h5>
+<button type="button" onclick="loadExample('1')">Foxian Cup</button><button type="button" onclick="loadExample('2')">Medieval Cup</button><button type="button" onclick="loadExample('3')">Regular</button>
 <div id="viewer"></div>
 <h2>Playground</h2>
 You can also directly edit the javascript below for this model. Beware that all changes will be lost when you navigate away from the page.
@@ -93,25 +164,23 @@ function main(params)
         params.number_of_rings = 0;
 
     //Determine the preview colors.
-    let cup_color = null;
-    let ring_color = null;
     switch(params.color)
     {
         case "C"://copper
-            cup_color = [0.90, 0.50, 0.24];
-            ring_color = cup_color;
+            params.cup_color = [0.90, 0.50, 0.24];
+            params.ring_color = params.cup_color;
         break;
         case "S"://silver
-            cup_color = [192/255, 192/255, 192/255];
-            ring_color = cup_color;
+            params.cup_color = [192/255, 192/255, 192/255];
+            params.ring_color = params.cup_color;
         break;
         case "G"://gold
-            cup_color = [1, 215/255, 0];
-            ring_color = cup_color;
+            params.cup_color = [1, 215/255, 0];
+            params.ring_color = params.cup_color;
         break;
         case "SG"://silver cup and gold rings
-            cup_color = [192/255, 192/255, 192/255];
-            ring_color = [1, 215/255, 0];
+            params.cup_color = [192/255, 192/255, 192/255];
+            params.ring_color = [1, 215/255, 0];
         break;
     }
 
@@ -134,13 +203,13 @@ function main(params)
     }
 
     //create the body of the cup
-    let cup = cup_body(params).setColor(cup_color);
+    let body = cup_body(params);
 
     //rings are handled separately because there may not be any if you set number_of_rings to 0, and they may be a different color that the body.
     if(params.number_of_rings){
         //rings + body + top
-        let rings = cup_rings(params).setColor(ring_color);
-        return cup.union(rings);
+        let rings = cup_rings(params);//returns an array of dictionaries that we can just add the body to
+        return body.union(rings);
     }
     else
     {
@@ -167,7 +236,11 @@ function ring(z=100, params)
               break;
               case "POLY":
                 //Rounded-square
-                y = height*(1-Math.pow((2*x-width)/width,2+(2*params.squareness)));
+                y = height*(1-Math.pow(
+                    (2*x-width)/width,
+                    2+(2*params.ring_squareness)
+                ));
+
               break;
               default:
                 //Can be more triangularly rounded (sin wave)
@@ -179,14 +252,15 @@ function ring(z=100, params)
     }
 
     let result = new CSG.Polygon2D(points);
-    //result = result.extrude({"offset":[0,0,1]});//test line to just inspect the polygon shape
+    //return result.extrude({"offset":[0,0,1]});//test line to just inspect the polygon shape
     result = result.translate([cup_radius, 0, 0]).rotateExtrude({"resolution":params.rotate_extrude_resolution});
-    return result.translate([0, 0, z]);//move to the correct Z location
+    result = result.translate([0, 0, z]);//move to the correct Z location,
+    return result.setColor(params.ring_color);//set color
 }
 
 function cup_rings(params)
 {
-    let rings;
+    let rings = [];
     for(let i = 0; i < params.number_of_rings; ++i)
     {
         let r;
@@ -197,14 +271,7 @@ function cup_rings(params)
         else{
             r = ring((params.cup_bottom_height-params.ring_height)-(((i-1)/2)*(params.ring_spacing+params.ring_height)), params);
         }
-        if( i == 0 )
-        {
-            rings = r;
-        }
-        else
-        {
-            rings = rings.union(r);
-        }
+        rings.push(r);
     }
     return rings;
 }
@@ -262,7 +329,8 @@ function cup_body(params)
 
     /* rotate extrude spins the shape around the Z axis */
     let shell = top.rotateExtrude({"resolution":params.rotate_extrude_resolution});
-    return shell.translate([0, 0, params.cup_bottom_height]);//move to the correct Z location
+    shell = shell.translate([0, 0, params.cup_bottom_height]);//move to the correct Z location
+    return shell.setColor(params.cup_color);//set color
 
 }
 

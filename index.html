@@ -90,8 +90,8 @@ function loadExample(exampleNo)
             update_parameter("cup_inner_diameter", 60);
             update_parameter("cup_top_height", 30);
             update_parameter("cup_bottom_height", 30);
-            update_parameter("cup_top_outer_diameter", 30);
-            update_parameter("cup_top_inner_diameter", 10);
+            update_parameter("indent_outer_diameter", 30);
+            update_parameter("indent_inner_diameter", 10);
             update_parameter("cup_top_squareness", 22);
             update_parameter("cup_top_indent", 2);
             update_parameter("material_thickness", 1);
@@ -102,15 +102,15 @@ function loadExample(exampleNo)
             update_parameter("ring_height", 6);
             update_parameter("ring_squareness", 2);
             update_parameter("color", "SG");
-
+            update_parameter("top_style", "S");
         break;
         case "2":
 
             update_parameter("cup_inner_diameter", 60);
             update_parameter("cup_top_height", 60);
             update_parameter("cup_bottom_height", 25);
-            update_parameter("cup_top_outer_diameter", 35);
-            update_parameter("cup_top_inner_diameter", 10);
+            update_parameter("indent_outer_diameter", 35);
+            update_parameter("indent_inner_diameter", 10);
             update_parameter("cup_top_squareness", 0);
             update_parameter("cup_top_indent", 2);
             update_parameter("material_thickness", 1);
@@ -121,14 +121,14 @@ function loadExample(exampleNo)
             update_parameter("ring_height", 27);
             update_parameter("ring_squareness", 10);
             update_parameter("color", "S");
-
+            update_parameter("top_style", "S");
         break;
         case "3":
             update_parameter("cup_inner_diameter", 60);
             update_parameter("cup_top_height", 50);
             update_parameter("cup_bottom_height", 30);
-            update_parameter("cup_top_outer_diameter", 30);
-            update_parameter("cup_top_inner_diameter", 20);
+            update_parameter("indent_outer_diameter", 30);
+            update_parameter("indent_inner_diameter", 20);
             update_parameter("cup_top_squareness", 20);
             update_parameter("cup_top_indent", 2);
             update_parameter("material_thickness", 1);
@@ -139,17 +139,23 @@ function loadExample(exampleNo)
             update_parameter("ring_height", 7);
             update_parameter("ring_squareness", 2);
             update_parameter("color", "C");
+            update_parameter("top_style", "S");
         break;
     }
     gProcessor.rebuildSolid();
 }
 
+
+
+
 </script>
 <title>Parametric Cup Generator</title>  
 </head>
 <body onload="onload()">
-<h1>Parametric Cup Generator</h1>
-<h5>For the Cups and Balls Routine by Brandon Gruber - Last Updated 8/24/2021</h5>
+<span>
+    <h1>Parametric Cup Generator</h1>
+    <h5>For the Cups and Balls Routine by Brandon Gruber - Last Updated 8/31/2021</h5>
+</span>
 <button type="button" onclick="loadExample('1')">Foxian Cup</button><button type="button" onclick="loadExample('2')">Medieval Cup</button><button type="button" onclick="loadExample('3')">Regular</button>
 <div id="viewer"></div>
 <h2>Playground</h2>
@@ -162,6 +168,10 @@ function main(params)
 {
     if( undefined === params.number_of_rings )
         params.number_of_rings = 0;
+
+    //precalc some radiai
+    params.cup_inner_radius = params.cup_inner_diameter/2;
+    params.cup_outer_radius = params.cup_inner_radius + params.material_thickness;
 
     //Determine the preview colors.
     switch(params.color)
@@ -203,7 +213,7 @@ function main(params)
     }
 
     //create the body of the cup
-    let body = cup_body(params);
+    let body = (params.top_style == 'S') ? cup_rounded_square(params) : cup_rounded(params);
 
     //rings are handled separately because there may not be any if you set number_of_rings to 0, and they may be a different color that the body.
     if(params.number_of_rings){
@@ -290,14 +300,15 @@ function top_shape_polynomial(x, w, h, sq)
 }
 
 
-function cup_body(params)
+
+function cup_rounded_square(params)
 {
 
-    let br = params.cup_top_outer_diameter/2;
+    let br = params.indent_outer_diameter/2;
     let w_inner = (params.cup_inner_diameter/2)-br;
     let w_outer = w_inner+params.material_thickness;
 
-    let indent_radius = (params.cup_top_inner_diameter < params.cup_top_outer_diameter) ? params.cup_top_inner_diameter/2 : params.cup_top_outer_diameter/2;
+    let indent_radius = (params.indent_inner_diameter < params.indent_outer_diameter) ? params.indent_inner_diameter/2 : params.indent_outer_diameter/2;
 
     /*create outer points of the cup*/
     let points = [];
@@ -339,7 +350,7 @@ function cup_body(params)
 // Here we define the user editable parameters: 
 function getParameterDefinitions()
 {
-  return [
+  let params = [
     {
       name: 'render_quality',
       type: 'choice',
@@ -351,9 +362,8 @@ function getParameterDefinitions()
     { name: 'cup_inner_diameter', caption: 'Inside Diameter:', type: 'int', default: 60 },
     { name: 'cup_top_height', caption: 'Top Height:', type: 'int', default: 30 },
     { name: 'cup_bottom_height', caption: 'Bottom Height:', type: 'int', default: 30},
-    { name: 'cup_top_outer_diameter', caption: 'Top Indent Outer Diameter:', type: 'int', default: 30 },
-    { name: 'cup_top_inner_diameter', caption: 'Top Indent Inner Diameter:', type: 'int', default: 10 },
-    { name: 'cup_top_squareness', caption: 'Top Squareness:', type: 'int', default: 22},
+    { name: 'indent_outer_diameter', caption: 'Top Indent Outer Diameter:', type: 'int', default: 30 },
+    { name: 'indent_inner_diameter', caption: 'Top Indent Inner Diameter:', type: 'int', default: 20 },
     { name: 'cup_top_indent', caption: 'Top Indent Depth:', type: 'int', default: 2 },
     { name: 'material_thickness', caption: 'Thickness', type: 'int', default: 1},
     { name: 'number_of_rings', caption: 'Number Of Rings', type: 'int', default: 3},
@@ -377,8 +387,122 @@ function getParameterDefinitions()
       caption: 'Preview Color:',
       initial: "SG",
     },
+    {
+      name: 'top_style',
+      type: 'choice',
+      values: ["S", "R"],
+      captions: ["Rounded-Square", "Rounded"],
+      caption: 'Cup-Top Style:',
+      initial: "S",
+    },
+    { name: 'cup_top_squareness', caption: '<b>Rounded-Square</b> Style Top Squareness:', type: 'int', default: 22},
   ];
+
+    let param_rounded_modifier_x = {
+      name: 'rounded_top_x',
+      type: 'choice',
+      values: [],
+      captions: [],
+      caption: '<b>Rounded-Top</b> Style Outward-Bend Ammount:',
+      initial: 89,
+    };
+
+
+    let param_rounded_modifier_y =
+    {
+      name: 'rounded_top_y',
+      type: 'choice',
+      values: [],
+      captions: [],
+      caption: '<b>Rounded-Top</b> Style Upward-Bend Ammount:',
+      initial: 70,
+    }
+    /*since there is no support for range yet. I'll make this a drop down for now.*/
+    for(let i = 1; i <= 100; ++i)
+    {
+        let full =  "==============================";
+        let ammount = i * full.length / 100;
+        let bar = full.slice(0, ammount) + i;
+
+        param_rounded_modifier_x.values.push(i);
+        param_rounded_modifier_x.captions.push(bar);
+        param_rounded_modifier_y.values.push(i);
+        param_rounded_modifier_y.captions.push(bar);
+    }
+
+    params.push(param_rounded_modifier_x);
+    params.push(param_rounded_modifier_y);
+
+    return params;
 }
+
+    function cup_rounded(params)
+{
+    var bend_point_ratio_x = params.rounded_top_x/100;
+    var bend_point_ratio_y = params.rounded_top_y/100;
+
+
+
+    var outer_path=new CSG.Path2D([
+        [0, -1*params.cup_bottom_height],//forms the bottom of the cup
+        [params.cup_outer_radius, -1*params.cup_bottom_height],
+        [params.cup_outer_radius,0]//point where the bottom of the cup and the top meet
+    ]);
+
+
+    outer_path = outer_path.appendBezier(
+        [[params.indent_outer_diameter*bend_point_ratio_x, params.cup_top_height*bend_point_ratio_y],
+        [(params.indent_outer_diameter/2) + params.material_thickness, params.cup_top_height]], {resolution: params.rotate_extrude_resolution});
+
+    outer_path = outer_path.appendPoints(
+        [
+            [(params.indent_outer_diameter/2), params.cup_top_height],//Additional point without the material thickness added to allow for steep indent angles
+            [params.indent_inner_diameter/2 + params.material_thickness, params.cup_top_height - params.cup_top_indent],
+            [0, params.cup_top_height - params.cup_top_indent],
+            [0,0]
+        ]
+
+    );
+
+    // close the path and convert to a solid 2D shape:
+    outer_path = outer_path.close();
+    let outer_shape = outer_path.innerToCAG();
+
+
+    let inner_path=new CSG.Path2D([
+        [0, -1*params.cup_bottom_height -1],//forms the bottom of the cup
+        [params.cup_inner_radius, -1*params.cup_bottom_height],
+        [params.cup_inner_radius,0]
+    ]);
+
+    inner_path = inner_path.appendBezier(
+        [[(params.indent_outer_diameter)*bend_point_ratio_x, (params.cup_top_height-params.material_thickness)*bend_point_ratio_y],
+        [(params.indent_outer_diameter/2)+params.material_thickness, params.cup_top_height-params.material_thickness]], {resolution: params.rotate_extrude_resolution});
+
+    inner_path = inner_path.appendPoints(
+        [
+            [(params.indent_inner_diameter/2) + (2*params.material_thickness), params.cup_top_height - params.cup_top_indent - params.material_thickness],//2x material thickness on the X is for allowing for steep indents
+            [0, params.cup_top_height - params.cup_top_indent - params.material_thickness],
+            [0,0]
+        ]
+
+    );
+
+    // close the path and convert to a solid 2D shape:
+    inner_path = inner_path.close();
+    let inner_shape = inner_path.innerToCAG();
+
+    let result = outer_shape.subtract(inner_shape);
+    result = result.rotateExtrude({"resolution":params.rotate_extrude_resolution});
+    result = result.translate([0, 0, params.cup_bottom_height]);//move to the correct Z location,
+    return result.setColor(params.cup_color);
+
+    //let outer_result = shape.extrude({"offset":[0,0,0.5]}).rotateX(90).rotateZ(-45);//test line to just inspect the polygon shape
+    //let inner_result = inner_shape.extrude({"offset":[0,0,2]}).rotateX(90).rotateZ(-45).translate([0,0.5,0]).setColor([1,0,0]);//for testing
+    //return outer_result.union(inner_result);
+
+}
+
 
 </textarea><br>
 <input type="submit" value="Update" onclick="updateSolid(); return false;">

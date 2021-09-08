@@ -147,7 +147,6 @@ function loadExample(exampleNo)
 
 
 
-
 </script>
 <title>Parametric Cup Generator</title>  
 </head>
@@ -172,6 +171,8 @@ function main(params)
     //precalc some radiai
     params.cup_inner_radius = params.cup_inner_diameter/2;
     params.cup_outer_radius = params.cup_inner_radius + params.material_thickness;
+    params.cup_indent_outer_radius = params.indent_outer_diameter/2;
+    params.cup_indent_inner_radius = params.indent_inner_diameter/2;
 
     //Determine the preview colors.
     switch(params.color)
@@ -211,7 +212,7 @@ function main(params)
         break;
 
     }
-
+/*
     //create the body of the cup
     let body = (params.top_style == 'S') ? cup_rounded_square(params) : cup_rounded(params);
 
@@ -226,7 +227,9 @@ function main(params)
         //only body + top. Dont know why you would want that but there you go.
         return cup;
     }
+*/
 
+    return cup_rounded_square(params);
 }
 
 function ring(z=100, params)
@@ -300,6 +303,149 @@ function top_shape_polynomial(x, w, h, sq)
 }
 
 
+function find_inside_radius_x_at_y(points, y, invert_xy=false)
+{
+
+    let x_index = invert_xy ? 1 : 0;
+    let y_index = invert_xy ? 0 : 1;
+
+    let closest_point = points[0];
+
+    for( let i = 1; i < points.length; ++i )
+    {
+        let p = points[i];
+
+        let p_y = p[y_index];
+        let c_y = closest_point[y_index];
+
+        let current_delta = Math.abs(c_y - y);
+        let loop_delta = Math.abs(p_y - y);
+        if (loop_delta < current_delta)
+        {
+            closest_point = p;
+        }
+    }
+    //console.log("The closest x: " + closest_point[x_index] + " for y: " + y + " in point:" + closest_point);
+    return closest_point[x_index];
+}
+
+function find_inside_points_at_x_and_y(x, y, points, invert_xy=false)
+{
+
+    let x_index = invert_xy ? 1 : 0;
+    let y_index = invert_xy ? 0 : 1;
+
+    let closest_point = points[0];
+
+    for( let i = 1; i < points.length; ++i )
+    {
+        let p = points[i];
+
+        let p_x = p[x_index];
+        let c_x = closest_point[x_index];
+        let p_y = p[y_index];
+        let c_y = closest_point[y_index];
+
+        let current_delta_x = Math.abs(c_x - x);
+        let loop_delta_x = Math.abs(p_x - x);
+        let current_delta_y = Math.abs(c_y - y);
+        let loop_delta_y = Math.abs(p_y - y);
+        if( (loop_delta_x < current_delta_x) && (loop_delta_y < current_delta_y) )
+        {
+            closest_point = p;
+        }
+
+    }
+
+    return closest_point;
+}
+
+
+
+
+
+function chop_cup_magnet_cover(params, inside_points)
+{
+
+    let magnet_height = 5;
+    let indent_total_radius = params.cup_indent_outer_radius + params.cup_indent_inner_radius;
+    let indent_hypot = Math.hypot(params.cup_top_indent, params.cup_indent_outer_radius - params.cup_indent_inner_radius);
+    let indent_angle_A = Math.atan(params.cup_top_indent/ (params.cup_indent_outer_radius - params.cup_indent_inner_radius));
+    let indent_angle_B = Math.PI/2 - indent_angle_A;
+    let indent_x = indent_hypot * Math.sin(indent_angle_B);
+    let indent_y = indent_hypot * Math.cos(indent_angle_B);
+
+    let indent_angle_sin = Math.sin(indent_angle_B) * params.material_thickness;
+    let indent_angle_cos = Math.cos(indent_angle_B) * params.material_thickness;
+    let crossection_width = params.material_thickness/(Math.cos(indent_angle_B)*Math.tan(indent_angle_B));
+
+    console.debug("angle A:", 180*indent_angle_A/Math.PI, "angle B:", 180*indent_angle_B/Math.PI);
+    console.debug("indent_total_radius: ", indent_total_radius);
+    console.debug("indent_hypot: ", indent_hypot);
+    console.debug("indent_angle_A: ", indent_angle_A);
+    console.debug("indent_angle_B: ", indent_angle_B );
+    console.debug("indent_x: ", indent_x);
+    console.debug("indent_y: ", indent_y);
+    console.debug("indent_angle_sin: ", indent_angle_sin);
+    console.debug("indent_angle_cos: ", indent_angle_cos);
+    console.debug("crossection_width: ", crossection_width);
+
+    let points = [];
+
+    points.push([params.cup_indent_outer_radius,
+            params.cup_top_height - magnet_height-params.material_thickness*Math.cos(indent_angle_B)]);
+
+    points.push([params.cup_indent_outer_radius,
+            params.cup_top_height - params.material_thickness]);
+
+    points.push([params.cup_indent_outer_radius + params.material_thickness,
+            params.cup_top_height - params.material_thickness]);
+
+    //first post on the left bottom
+    points.push([
+            params.cup_indent_outer_radius + params.material_thickness,
+            params.cup_top_height - magnet_height - params.material_thickness*Math.cos(indent_angle_A)
+    ]);
+    let testpoint = params.cup_indent_inner_radius+params.material_thickness + params.material_thickness*Math.sin(indent_angle_A);
+    console.debug(testpoint);
+    //second post left bottom
+    points.push([
+                    testpoint,
+                    params.cup_top_height - params.cup_top_indent - magnet_height - params.material_thickness
+                ]);
+    points.push([
+                    0,
+                    params.cup_top_height - params.cup_top_indent - magnet_height - params.material_thickness
+                ]);
+    points.push([
+                    0,
+                    params.cup_top_height - params.cup_top_indent - magnet_height
+                ]);
+    points.push([
+                    params.cup_indent_inner_radius,
+                    params.cup_top_height - params.cup_top_indent - magnet_height
+                ]);
+    points.push([
+                    params.cup_indent_inner_radius,
+                    params.cup_top_height - params.cup_top_indent - params.material_thickness
+                ]);
+    points.push([
+                    params.cup_indent_inner_radius + params.material_thickness,
+                    params.cup_top_height - params.cup_top_indent - params.material_thickness + params.material_thickness*Math.tan(indent_angle_A)
+                ]);
+    points.push([
+                    params.cup_indent_inner_radius + params.material_thickness,
+                    params.cup_top_height - params.cup_top_indent - magnet_height
+                ]);
+
+    points = new CSG.Path2D(points);
+    points = points.close();
+    let cover = points.innerToCAG();
+
+    console.debug(cover);
+    cover = cover.extrude([0,0,20]).setColor([0, 0, 1]).rotateX(90).rotateZ(-45);
+    return cover;
+}
 
 function cup_rounded_square(params)
 {
@@ -307,7 +453,7 @@ function cup_rounded_square(params)
     let br = params.indent_outer_diameter/2;
     let w_inner = (params.cup_inner_diameter/2)-br;
     let w_outer = w_inner+params.material_thickness;
-
+    let inside_points = [];
     let indent_radius = (params.indent_inner_diameter < params.indent_outer_diameter) ? params.indent_inner_diameter/2 : params.indent_outer_diameter/2;
 
     /*create outer points of the cup*/
@@ -330,6 +476,7 @@ function cup_rounded_square(params)
     for(let x = w_inner; x >= 0; x -= params.curve_generation_resolution){
         let y = top_shape_polynomial(x, w_inner, params.cup_top_height-params.material_thickness, params.cup_top_squareness);
         points.push( new CSG.Vector2D(x+br, y ));
+        inside_points.push([x+br, y]);
     }
     points.push( new CSG.Vector2D(indent_radius, params.cup_top_height-params.cup_top_indent-params.material_thickness ) );
     points.push( new CSG.Vector2D(0, params.cup_top_height-params.cup_top_indent-params.material_thickness) );
@@ -337,14 +484,15 @@ function cup_rounded_square(params)
     let top = new CSG.Polygon2D(points);
 
     // To test the shape uncomment
-    //top = top.extrude([0,0,1]).setColor([1, 0, 0]).rotateX(90);
-    //return top.translate([0, 0, params.cup_bottom_height]);
+    top = top.extrude([0,0,1]).setColor([1, 0, 0]).rotateX(90).rotateZ(-45);
+    return top.union(chop_cup_magnet_cover(params, inside_points));
 
-    /* rotate extrude spins the shape around the Z axis */
+
+    /* rotate extrude spins the shape around the Z axis
     let shell = top.rotateExtrude({"resolution":params.rotate_extrude_resolution});
     shell = shell.translate([0, 0, params.cup_bottom_height]);//move to the correct Z location
     return shell.setColor(params.cup_color);//set color
-
+    */
 }
 
 // Here we define the user editable parameters: 
@@ -359,15 +507,15 @@ function getParameterDefinitions()
       caption: 'Render Quality:',
       initial: "PREVIEW",
     },
-    { name: 'cup_inner_diameter', caption: 'Inside Diameter:', type: 'int', default: 60 },
-    { name: 'cup_top_height', caption: 'Top Height:', type: 'int', default: 30 },
-    { name: 'cup_bottom_height', caption: 'Bottom Height:', type: 'int', default: 30},
-    { name: 'indent_outer_diameter', caption: 'Top Indent Outer Diameter:', type: 'int', default: 30 },
-    { name: 'indent_inner_diameter', caption: 'Top Indent Inner Diameter:', type: 'int', default: 20 },
-    { name: 'cup_top_indent', caption: 'Top Indent Depth:', type: 'int', default: 2 },
-    { name: 'material_thickness', caption: 'Thickness', type: 'int', default: 1},
+    { name: 'cup_inner_diameter', caption: 'Inside Diameter:', type: 'float', default: 60 },
+    { name: 'cup_top_height', caption: 'Top Height:', type: 'float', default: 30 },
+    { name: 'cup_bottom_height', caption: 'Bottom Height:', type: 'float', default: 30},
+    { name: 'indent_outer_diameter', caption: 'Top Indent Outer Diameter:', type: 'float', default: 30 },
+    { name: 'indent_inner_diameter', caption: 'Top Indent Inner Diameter:', type: 'float', default: 20 },
+    { name: 'cup_top_indent', caption: 'Top Indent Depth:', type: 'float', default: 0 },
+    { name: 'material_thickness', caption: 'Thickness', type: 'float', default: 1},
     { name: 'number_of_rings', caption: 'Number Of Rings', type: 'int', default: 3},
-    { name: 'ring_spacing', caption: 'Ring Spacing', type: 'int', default: 6},
+    { name: 'ring_spacing', caption: 'Ring Spacing', type: 'float', default: 6},
     {
       name: 'ring_style',
       type: 'choice',
@@ -376,9 +524,9 @@ function getParameterDefinitions()
       caption: 'Ring Curve Style:',
       initial: "ROOT",
     },
-    { name: 'ring_width', caption: 'Ring Width:', type: 'int', default: 3},
-    { name: 'ring_height', caption: 'Ring Height:', type: 'int', default: 6},
-    { name: 'ring_squareness', caption: 'Ring Squareness:', type: 'int', default: 2},
+    { name: 'ring_width', caption: 'Ring Width:', type: 'float', default: 3},
+    { name: 'ring_height', caption: 'Ring Height:', type: 'float', default: 6},
+    { name: 'ring_squareness', caption: 'Ring Squareness:', type: 'float', default: 2},
     {
       name: 'color',
       type: 'choice',

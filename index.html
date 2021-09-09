@@ -153,7 +153,7 @@ function loadExample(exampleNo)
 <body onload="onload()">
 <span>
     <h1>Parametric Cup Generator</h1>
-    <h5>For the Cups and Balls Routine by Brandon Gruber - Last Updated 8/31/2021</h5>
+    <h5>For the Cups and Balls Routine by Brandon Gruber - Last Updated 9/9/2021</h5>
 </span>
 <button type="button" onclick="loadExample('1')">Foxian Cup</button><button type="button" onclick="loadExample('2')">Medieval Cup</button><button type="button" onclick="loadExample('3')">Regular</button>
 <div id="viewer"></div>
@@ -212,24 +212,47 @@ function main(params)
         break;
 
     }
-/*
-    //create the body of the cup
-    let body = (params.top_style == 'S') ? cup_rounded_square(params) : cup_rounded(params);
 
-    //rings are handled separately because there may not be any if you set number_of_rings to 0, and they may be a different color that the body.
-    if(params.number_of_rings){
-        //rings + body + top
-        let rings = cup_rings(params);//returns an array of dictionaries that we can just add the body to
-        return body.union(rings);
+    //create the body of the cup
+    let body;
+    let chop_cup_cover = null;
+    if(params.top_style == 'S')
+    {
+        let result = cup_rounded_square(params);
+        body = result[0];
+        //only rounded square type will generate a chop cup cover for now will add rounded style shortly
+        chop_cup_cover = result[1];
     }
     else
     {
-        //only body + top. Dont know why you would want that but there you go.
-        return cup;
+        body = cup_rounded(params);
     }
-*/
 
-    return cup_rounded_square(params);
+
+    //rings are handled separately because there may not be any if you set number_of_rings to 0, and they may be a different color that the body.
+    if(params.number_of_rings){
+        let rings = cup_rings(params);
+        body = body.union(rings);
+    }
+
+
+    if( null != chop_cup_cover )
+    {
+        return [
+            {
+                name: "cup",
+                caption: "Cup Body",
+                data: body,
+            },
+            {
+                name: "magnet cover",
+                caption: "Chop-Cup Magnet Cover",
+                data: chop_cup_cover,
+            }
+        ];
+    }
+
+    return body;
 }
 
 function ring(z=100, params)
@@ -367,7 +390,7 @@ function find_inside_points_at_x_and_y(x, y, points, invert_xy=false)
 function chop_cup_magnet_cover(params, inside_points)
 {
 
-    let magnet_height = 5;
+    let magnet_height = 0.1 + params.magnet_height;
     let indent_total_radius = params.cup_indent_outer_radius + params.cup_indent_inner_radius;
     let indent_hypot = Math.hypot(params.cup_top_indent, params.cup_indent_outer_radius - params.cup_indent_inner_radius);
     let indent_angle_A = Math.atan(params.cup_top_indent/ (params.cup_indent_outer_radius - params.cup_indent_inner_radius));
@@ -392,25 +415,56 @@ function chop_cup_magnet_cover(params, inside_points)
 
     let points = [];
 
-    points.push([params.cup_indent_outer_radius,
-            params.cup_top_height - magnet_height-params.material_thickness*Math.cos(indent_angle_B)]);
 
+    let first_post_outer_edge_x = params.cup_indent_outer_radius + params.material_thickness;
+    let first_post_outer_base_y_above_material = params.cup_top_height - magnet_height;
+    let first_post_outer_base_y_below_material = first_post_outer_base_y_above_material - params.material_thickness*Math.cos(indent_angle_A);
+
+    //first post bottom inside point
+    points.push([params.cup_indent_outer_radius,
+            params.cup_top_height - magnet_height]);
+
+    //first post top iniside point
     points.push([params.cup_indent_outer_radius,
             params.cup_top_height - params.material_thickness]);
 
-    points.push([params.cup_indent_outer_radius + params.material_thickness,
-            params.cup_top_height - params.material_thickness]);
+    //top of the first post outer edge
+    points.push([
+        first_post_outer_edge_x,
+        params.cup_top_height - params.material_thickness
+    ]);
 
     //first post on the left bottom
     points.push([
-            params.cup_indent_outer_radius + params.material_thickness,
-            params.cup_top_height - magnet_height - params.material_thickness*Math.cos(indent_angle_A)
+            first_post_outer_edge_x,
+            first_post_outer_base_y_above_material
     ]);
-    let testpoint = params.cup_indent_inner_radius+params.material_thickness + params.material_thickness*Math.sin(indent_angle_A);
-    console.debug(testpoint);
+
+    //point at the edge of the cup above material
+    points.push([
+            find_inside_radius_x_at_y(inside_points, first_post_outer_base_y_above_material),
+            first_post_outer_base_y_above_material
+    ]);
+
+    //point at the edge of the cup below material
+    points.push([
+            find_inside_radius_x_at_y(inside_points, first_post_outer_base_y_below_material),
+            first_post_outer_base_y_below_material
+    ]);
+
+
+    //point at the edge of the first post if the edge cup point didn't exist
+    points.push([
+            params.cup_indent_outer_radius + params.material_thickness,
+            first_post_outer_base_y_below_material
+    ]);
+
+
+
+
     //second post left bottom
     points.push([
-                    testpoint,
+                    params.cup_indent_inner_radius+params.material_thickness + params.material_thickness*Math.sin(indent_angle_A),
                     params.cup_top_height - params.cup_top_indent - magnet_height - params.material_thickness
                 ]);
     points.push([
@@ -442,8 +496,13 @@ function chop_cup_magnet_cover(params, inside_points)
     points = points.close();
     let cover = points.innerToCAG();
 
-    console.debug(cover);
-    cover = cover.extrude([0,0,20]).setColor([0, 0, 1]).rotateX(90).rotateZ(-45);
+    //test extrude
+    //cover = cover.extrude([0,0,20]).setColor([0, 0, 1]).rotateX(90).rotateZ(-45);
+
+    cover = cover.rotateExtrude({"resolution":params.rotate_extrude_resolution});
+    cover = cover.translate([0, 0, params.cup_bottom_height]);//move to the correct Z location
+    return cover.setColor(params.cup_color);//set color
+
     return cover;
 }
 
@@ -484,15 +543,18 @@ function cup_rounded_square(params)
     let top = new CSG.Polygon2D(points);
 
     // To test the shape uncomment
-    top = top.extrude([0,0,1]).setColor([1, 0, 0]).rotateX(90).rotateZ(-45);
-    return top.union(chop_cup_magnet_cover(params, inside_points));
+    //top = top.extrude([0,0,1]).setColor([1, 0, 0]).rotateX(90).rotateZ(-45);
+    //return top.union(chop_cup_magnet_cover(params, inside_points));
 
-
-    /* rotate extrude spins the shape around the Z axis
+    /* rotate extrude spins the shape around the Z axis*/
     let shell = top.rotateExtrude({"resolution":params.rotate_extrude_resolution});
     shell = shell.translate([0, 0, params.cup_bottom_height]);//move to the correct Z location
-    return shell.setColor(params.cup_color);//set color
-    */
+    shell = shell.setColor(params.cup_color)
+
+    let chop_cup_cover = chop_cup_magnet_cover(params, inside_points);
+
+    return [shell, chop_cup_cover];//set color
+
 }
 
 // Here we define the user editable parameters: 
@@ -512,7 +574,7 @@ function getParameterDefinitions()
     { name: 'cup_bottom_height', caption: 'Bottom Height:', type: 'float', default: 30},
     { name: 'indent_outer_diameter', caption: 'Top Indent Outer Diameter:', type: 'float', default: 30 },
     { name: 'indent_inner_diameter', caption: 'Top Indent Inner Diameter:', type: 'float', default: 20 },
-    { name: 'cup_top_indent', caption: 'Top Indent Depth:', type: 'float', default: 0 },
+    { name: 'cup_top_indent', caption: 'Top Indent Depth:', type: 'float', default: 2 },
     { name: 'material_thickness', caption: 'Thickness', type: 'float', default: 1},
     { name: 'number_of_rings', caption: 'Number Of Rings', type: 'int', default: 3},
     { name: 'ring_spacing', caption: 'Ring Spacing', type: 'float', default: 6},
@@ -543,6 +605,8 @@ function getParameterDefinitions()
       caption: 'Cup-Top Style:',
       initial: "S",
     },
+
+    { name: 'magnet_height', caption: 'Chop-Cup Magnet Height:', type: 'float', default: 3},
     { name: 'cup_top_squareness', caption: '<b>Rounded-Square</b> Style Top Squareness:', type: 'int', default: 22},
   ];
 
@@ -681,14 +745,6 @@ Contributions by <a href="https://github.com/alx">Alexandre Girard</a>,
  <a href="https://github.com/bebbi">bebbi</a>,
  <a href="https://github.com/sahilshekhawat">Sahil Shekhawat</a>.
 All code released under MIT license.
-<br><br>
-Contributions are welcome! It's all written in Javascript, so if you know how to use it you
-know how to modify it as well.
-To contribute go to <a href="https://github.com/joostn/OpenJsCad/tree/gh-pages">OpenJsCad at GitHub (gh-pages tree)</a>,
-<a href="http://help.github.com/fork-a-repo/">create your own fork</a> and 
-<a href="http://help.github.com/send-pull-requests/">send me a pull request</a>. Note that the code is maintained 
-in the gh-pages branch, not the master branch. This is so that it can be accessed directly via Github pages.
-
 
 </body>
 </html>

@@ -776,7 +776,7 @@ OpenJsCad.Processor.prototype = {
     this.statusbuttons.appendChild(this.formatDropdown);
     this.generateOutputFileButton = document.createElement("button");
     this.generateOutputFileButton.onclick = function(e) {
-      that.generateOutputFile();
+      that.generateOutputFile("parametric_cup");
     };
     this.statusbuttons.appendChild(this.generateOutputFileButton);
     this.downloadOutputFileLink = document.createElement("a");
@@ -1144,7 +1144,7 @@ OpenJsCad.Processor.prototype = {
     }
   },
 
-  generateOutputFile: function() {
+  generateOutputFile: function(filename) {
     this.clearOutputFile();
     if(this.hasValidCurrentObject)
     {
@@ -1154,7 +1154,7 @@ OpenJsCad.Processor.prototype = {
       }
       catch(e)
       {
-        this.generateOutputFileBlobUrl();
+        this.generateOutputFileBlobUrl(filename);
       }
     }
   },
@@ -1216,7 +1216,7 @@ OpenJsCad.Processor.prototype = {
     return "Download "+ext.toUpperCase();
   },
 
-  generateOutputFileBlobUrl: function() {
+  generateOutputFileBlobUrl: function(filename) {
     var blob = this.currentObjectToBlob();
     var windowURL=OpenJsCad.getWindowURL();
     this.outputFileBlobUrl = windowURL.createObjectURL(blob)
@@ -1225,7 +1225,7 @@ OpenJsCad.Processor.prototype = {
     this.downloadOutputFileLink.href = this.outputFileBlobUrl;
     this.downloadOutputFileLink.innerHTML = this.downloadLinkTextForCurrentObject();
     var ext = this.selectedFormatInfo().extension;
-    this.downloadOutputFileLink.setAttribute("download", "openjscad."+ext);
+    this.downloadOutputFileLink.setAttribute("download", filename+"."+ext);
     this.enableItems();
     if(this.onchange) this.onchange();
   },

@@ -124,19 +124,19 @@ function loadExample(exampleNo)
             update_parameter("top_style", "S");
         break;
         case "3":
-            update_parameter("cup_inner_diameter", 60);
-            update_parameter("cup_top_height", 50);
-            update_parameter("cup_bottom_height", 30);
-            update_parameter("indent_outer_diameter", 30);
-            update_parameter("indent_inner_diameter", 20);
+            update_parameter("cup_inner_diameter", 63.7);
+            update_parameter("cup_top_height", 35.33);
+            update_parameter("cup_bottom_height", 36.1);
+            update_parameter("indent_outer_diameter", 37.77);
+            update_parameter("indent_inner_diameter", 10.28);
             update_parameter("cup_top_squareness", 20);
-            update_parameter("cup_top_indent", 2);
+            update_parameter("cup_top_indent", 2.5);
             update_parameter("material_thickness", 1);
             update_parameter("number_of_rings", 2);
             update_parameter("ring_spacing", 6);
             update_parameter("ring_style", "SIN");
             update_parameter("ring_width", 3);
-            update_parameter("ring_height", 7);
+            update_parameter("ring_height", 6.72);
             update_parameter("ring_squareness", 2);
             update_parameter("color", "C");
             update_parameter("top_style", "S");
@@ -153,7 +153,7 @@ function loadExample(exampleNo)
 <body onload="onload()">
 <span>
     <h1>Parametric Cup Generator</h1>
-    <h5>For the Cups and Balls Routine by Brandon Gruber - Last Updated 9/9/2021</h5>
+    <h5>For the Cups and Balls Routine by Brandon Gruber - Last Updated 9/13/2021</h5>
 </span>
 <button type="button" onclick="loadExample('1')">Foxian Cup</button><button type="button" onclick="loadExample('2')">Medieval Cup</button><button type="button" onclick="loadExample('3')">Regular</button>
 <div id="viewer"></div>
@@ -214,50 +214,44 @@ function main(params)
     }
 
     //create the body of the cup
-    let body;
-    let chop_cup_cover = null;
-    if(params.top_style == 'S')
-    {
-        let result = cup_rounded_square(params);
-        body = result[0];
-        //only rounded square type will generate a chop cup cover for now will add rounded style shortly
-        chop_cup_cover = result[1];
-    }
-    else
-    {
-        body = cup_rounded(params);
-    }
+    let result = (params.top_style == 'S') ? cup_rounded_square(params) : cup_rounded(params);
 
+    if( 0 == params.number_of_rings )
+        return result;
+
+    let body = null;
+    for( thing in result )
+    {
+        console.debug(result[thing].name);
+        if(result[thing].name == 'cup')
+        {
+            body = result[thing].data;
+        }
+    }
 
     //rings are handled separately because there may not be any if you set number_of_rings to 0, and they may be a different color that the body.
-    if(params.number_of_rings){
-        let rings = cup_rings(params);
-        body = body.union(rings);
+
+    let rings = cup_rings(params);
+    let single_ring_at_origin_dict = {
+        name: 'ring',
+        caption: 'Ring Only',
+        data: ring(params.ring_height, params),
     }
+    result.splice(0, 0, single_ring_at_origin_dict);
+    let body_with_rings_dict = {
+        name:'body_with_rings',
+        caption: 'Cup with Rings Attached',
+        data: body.union(rings),
+    };
+    result.splice(0, 0, body_with_rings_dict);
+
+    return result;
 
 
-    if( null != chop_cup_cover )
-    {
-        return [
-            {
-                name: "cup",
-                caption: "Cup Body",
-                data: body,
-            },
-            {
-                name: "magnet cover",
-                caption: "Chop-Cup Magnet Cover",
-                data: chop_cup_cover,
-            }
-        ];
-    }
-
-    return body;
 }
 
 function ring(z=100, params)
 {
-    let cup_radius = params.cup_inner_diameter/2 + params.material_thickness;
     var points = [];
     let width = params.ring_height;//ring_height is the width of the curve
     let height = params.ring_width;//ring_width is the hight of the curve
@@ -289,7 +283,7 @@ function ring(z=100, params)
 
     let result = new CSG.Polygon2D(points);
     //return result.extrude({"offset":[0,0,1]});//test line to just inspect the polygon shape
-    result = result.translate([cup_radius, 0, 0]).rotateExtrude({"resolution":params.rotate_extrude_resolution});
+    result = result.translate([params.cup_outer_radius, 0, 0]).rotateExtrude({"resolution":params.rotate_extrude_resolution});
     result = result.translate([0, 0, z]);//move to the correct Z location,
     return result.setColor(params.ring_color);//set color
 }
@@ -352,40 +346,6 @@ function find_inside_radius_x_at_y(points, y, invert_xy=false)
     return closest_point[x_index];
 }
 
-function find_inside_points_at_x_and_y(x, y, points, invert_xy=false)
-{
-
-    let x_index = invert_xy ? 1 : 0;
-    let y_index = invert_xy ? 0 : 1;
-
-    let closest_point = points[0];
-
-    for( let i = 1; i < points.length; ++i )
-    {
-        let p = points[i];
-
-        let p_x = p[x_index];
-        let c_x = closest_point[x_index];
-        let p_y = p[y_index];
-        let c_y = closest_point[y_index];
-
-        let current_delta_x = Math.abs(c_x - x);
-        let loop_delta_x = Math.abs(p_x - x);
-        let current_delta_y = Math.abs(c_y - y);
-        let loop_delta_y = Math.abs(p_y - y);
-        if( (loop_delta_x < current_delta_x) && (loop_delta_y < current_delta_y) )
-        {
-            closest_point = p;
-        }
-
-    }
-
-    return closest_point;
-}
-
-
-
-
 
 function chop_cup_magnet_cover(params, inside_points)
 {
@@ -440,17 +400,42 @@ function chop_cup_magnet_cover(params, inside_points)
             first_post_outer_base_y_above_material
     ]);
 
+    let inside_radius_at_y = find_inside_radius_x_at_y(inside_points, first_post_outer_base_y_above_material);
+
+    if(inside_radius_at_y > params.cup_inner_radius){
+        console.log("Error too large: " + inside_radius_at_y);
+        inside_radius_at_y = params.cup_inner_radius;
+    }
+
+    if(inside_radius_at_y < (params.cup_indent_outer_radius + params.material_thickness)){
+        console.log("Error too small:" + inside_radius_at_y);
+        inside_radius_at_y = (params.cup_indent_outer_radius + params.material_thickness);
+    }
+
+
     //point at the edge of the cup above material
     points.push([
-            find_inside_radius_x_at_y(inside_points, first_post_outer_base_y_above_material),
+            inside_radius_at_y,
             first_post_outer_base_y_above_material
     ]);
 
+    inside_radius_at_y = find_inside_radius_x_at_y(inside_points, first_post_outer_base_y_below_material);
+
+    if(inside_radius_at_y > params.cup_inner_radius){
+        console.log("Error too large: " + inside_radius_at_y);
+        inside_radius_at_y = params.cup_inner_radius;
+    }
+
+    if(inside_radius_at_y < (params.cup_indent_outer_radius + params.material_thickness)){
+        console.log("Error too small:" + inside_radius_at_y);
+        inside_radius_at_y = (params.cup_indent_outer_radius + params.material_thickness);
+    }
     //point at the edge of the cup below material
     points.push([
-            find_inside_radius_x_at_y(inside_points, first_post_outer_base_y_below_material),
+            inside_radius_at_y,
             first_post_outer_base_y_below_material
     ]);
+
 
 
     //point at the edge of the first post if the edge cup point didn't exist
@@ -497,23 +482,21 @@ function chop_cup_magnet_cover(params, inside_points)
     let cover = points.innerToCAG();
 
     //test extrude
-    //cover = cover.extrude([0,0,20]).setColor([0, 0, 1]).rotateX(90).rotateZ(-45);
+    //return cover.extrude([0,0,20]).setColor([0, 0, 1]).rotateX(90).rotateZ(-45);
 
     cover = cover.rotateExtrude({"resolution":params.rotate_extrude_resolution});
     cover = cover.translate([0, 0, params.cup_bottom_height]);//move to the correct Z location
     return cover.setColor(params.cup_color);//set color
 
-    return cover;
 }
 
 function cup_rounded_square(params)
 {
 
-    let br = params.indent_outer_diameter/2;
-    let w_inner = (params.cup_inner_diameter/2)-br;
+    let w_inner = (params.cup_inner_radius)-params.cup_indent_outer_radius;
     let w_outer = w_inner+params.material_thickness;
     let inside_points = [];
-    let indent_radius = (params.indent_inner_diameter < params.indent_outer_diameter) ? params.indent_inner_diameter/2 : params.indent_outer_diameter/2;
+    let indent_radius = (params.indent_inner_diameter < params.indent_outer_diameter) ? params.cup_indent_inner_radius : params.cup_indent_outer_radius;
 
     /*create outer points of the cup*/
     let points = [];
@@ -522,20 +505,20 @@ function cup_rounded_square(params)
     for(let x = 0;x <= w_outer; x += params.curve_generation_resolution){
         let y = top_shape_polynomial(x, w_outer, params.cup_top_height, params.cup_top_squareness);
 
-        points.push( new CSG.Vector2D(x+br, y ));
+        points.push( new CSG.Vector2D(x+params.cup_indent_outer_radius, y ));
     }
 
     /* bottom two make the bottom of the cup */
-    points.push( new CSG.Vector2D(params.cup_inner_diameter/2 + params.material_thickness, 0) );
-    points.push( new CSG.Vector2D(params.cup_inner_diameter/2 + params.material_thickness, params.cup_bottom_height*-1) );
-    points.push( new CSG.Vector2D(params.cup_inner_diameter/2, params.cup_bottom_height*-1) );
-    points.push( new CSG.Vector2D(params.cup_inner_diameter/2, 0) );
+    points.push( new CSG.Vector2D(params.cup_outer_radius, 0) );
+    points.push( new CSG.Vector2D(params.cup_outer_radius, params.cup_bottom_height*-1) );
+    points.push( new CSG.Vector2D(params.cup_inner_radius, params.cup_bottom_height*-1) );
+    points.push( new CSG.Vector2D(params.cup_inner_radius, 0) );
 
     /*create inner points of the cup*/
     for(let x = w_inner; x >= 0; x -= params.curve_generation_resolution){
         let y = top_shape_polynomial(x, w_inner, params.cup_top_height-params.material_thickness, params.cup_top_squareness);
-        points.push( new CSG.Vector2D(x+br, y ));
-        inside_points.push([x+br, y]);
+        points.push( new CSG.Vector2D(x+params.cup_indent_outer_radius, y ));
+        inside_points.push([x+params.cup_indent_outer_radius, y]);
     }
     points.push( new CSG.Vector2D(indent_radius, params.cup_top_height-params.cup_top_indent-params.material_thickness ) );
     points.push( new CSG.Vector2D(0, params.cup_top_height-params.cup_top_indent-params.material_thickness) );
@@ -551,9 +534,36 @@ function cup_rounded_square(params)
     shell = shell.translate([0, 0, params.cup_bottom_height]);//move to the correct Z location
     shell = shell.setColor(params.cup_color)
 
-    let chop_cup_cover = chop_cup_magnet_cover(params, inside_points);
 
-    return [shell, chop_cup_cover];//set color
+
+
+    if(params.magnet_height)
+    {
+        let chop_cup_cover = chop_cup_magnet_cover(params, inside_points);
+         return [
+            {
+                name: "cup",
+                caption: "Cup Body",
+                data: shell,
+            },
+            {
+                name: "magnet cover",
+                caption: "Chop-Cup Magnet Cover",
+                data: chop_cup_cover,
+            }
+        ];
+    }
+    else
+    {
+         return [
+            {
+                name: "cup",
+                caption: "Cup Body",
+                data: shell,
+            }
+        ];
+    }
+
 
 }
 
@@ -606,7 +616,7 @@ function getParameterDefinitions()
       initial: "S",
     },
 
-    { name: 'magnet_height', caption: 'Chop-Cup Magnet Height:', type: 'float', default: 3},
+    { name: 'magnet_height', caption: 'Chop-Cup Magnet Height <b>(0:Disabled)</b>:', type: 'float', default: 3},
     { name: 'cup_top_squareness', caption: '<b>Rounded-Square</b> Style Top Squareness:', type: 'int', default: 22},
   ];
 
@@ -664,12 +674,12 @@ function getParameterDefinitions()
 
     outer_path = outer_path.appendBezier(
         [[params.indent_outer_diameter*bend_point_ratio_x, params.cup_top_height*bend_point_ratio_y],
-        [(params.indent_outer_diameter/2) + params.material_thickness, params.cup_top_height]], {resolution: params.rotate_extrude_resolution});
+        [(params.cup_indent_outer_radius) + params.material_thickness, params.cup_top_height]], {resolution: params.rotate_extrude_resolution});
 
     outer_path = outer_path.appendPoints(
         [
-            [(params.indent_outer_diameter/2), params.cup_top_height],//Additional point without the material thickness added to allow for steep indent angles
-            [params.indent_inner_diameter/2 + params.material_thickness, params.cup_top_height - params.cup_top_indent],
+            [(params.cup_indent_outer_radius), params.cup_top_height],//Additional point without the material thickness added to allow for steep indent angles
+            [params.cup_indent_inner_radius + params.material_thickness, params.cup_top_height - params.cup_top_indent],
             [0, params.cup_top_height - params.cup_top_indent],
             [0,0]
         ]
@@ -689,11 +699,11 @@ function getParameterDefinitions()
 
     inner_path = inner_path.appendBezier(
         [[(params.indent_outer_diameter)*bend_point_ratio_x, (params.cup_top_height-params.material_thickness)*bend_point_ratio_y],
-        [(params.indent_outer_diameter/2)+params.material_thickness, params.cup_top_height-params.material_thickness]], {resolution: params.rotate_extrude_resolution});
+        [(params.cup_indent_outer_radius)+params.material_thickness, params.cup_top_height-params.material_thickness]], {resolution: params.rotate_extrude_resolution});
 
     inner_path = inner_path.appendPoints(
         [
-            [(params.indent_inner_diameter/2) + (2*params.material_thickness), params.cup_top_height - params.cup_top_indent - params.material_thickness],//2x material thickness on the X is for allowing for steep indents
+            [(params.cup_indent_inner_radius) + (2*params.material_thickness), params.cup_top_height - params.cup_top_indent - params.material_thickness],//2x material thickness on the X is for allowing for steep indents
             [0, params.cup_top_height - params.cup_top_indent - params.material_thickness],
             [0,0]
         ]
@@ -703,15 +713,48 @@ function getParameterDefinitions()
     // close the path and convert to a solid 2D shape:
     inner_path = inner_path.close();
     let inner_shape = inner_path.innerToCAG();
+    let shell = outer_shape.subtract(inner_shape);
 
-    let result = outer_shape.subtract(inner_shape);
-    result = result.rotateExtrude({"resolution":params.rotate_extrude_resolution});
-    result = result.translate([0, 0, params.cup_bottom_height]);//move to the correct Z location,
-    return result.setColor(params.cup_color);
+    //shell = shell.extrude({"offset":[0,0,0.5]}).rotateX(90).rotateZ(-45);//test line to just inspect the polygon shape
 
-    //let outer_result = shape.extrude({"offset":[0,0,0.5]}).rotateX(90).rotateZ(-45);//test line to just inspect the polygon shape
-    //let inner_result = inner_shape.extrude({"offset":[0,0,2]}).rotateX(90).rotateZ(-45).translate([0,0.5,0]).setColor([1,0,0]);//for testing
-    //return outer_result.union(inner_result);
+    shell = shell.rotateExtrude({"resolution":params.rotate_extrude_resolution});
+    shell = shell.translate([0, 0, params.cup_bottom_height]);//move to the correct Z location,
+    shell = shell.setColor(params.cup_color);
+
+    if(params.magnet_height)
+    {
+        let inner_points_for_chop_cup_gen = [];
+        for( point in inner_path.points )
+        {
+            let p = inner_path.points[point];
+            let p2 = [p._x, p._y];
+            inner_points_for_chop_cup_gen.push(p2);
+        }
+        let chop_cup_cover = chop_cup_magnet_cover(params, inner_points_for_chop_cup_gen);
+        return [
+            {
+                name: "cup",
+                caption: "Cup Body",
+                data: shell,
+            },
+            {
+                name: "magnet cover",
+                caption: "Chop-Cup Magnet Cover",
+                data: chop_cup_cover,
+            }
+        ];
+    }
+    else
+    {
+        return [
+            {
+                name: "cup",
+                caption: "Cup Body",
+                data: shell,
+            }
+        ];
+    }
+
 
 }
 
@@ -722,6 +765,25 @@ function getParameterDefinitions()
 
 <h2>About This Page</h2>
 This is a page forked from the <a href="https://joostn.github.io/OpenJsCad/">OpenJsCAD</a> page to generate a custom cup for the cups and balls routine. Tweak the parameters as desired, then download the model with "Generate STL button".
+
+<h2>Release Notes</h2>
+<ul>
+    <li>
+        Currently, the "Rounded" Cup-Top style is experimental as it doesn't work well with the way I am generating the chop-cup magnet cover, and the cup generated could be too thin depending on the shape, but it should be a better looking shape in the end.
+    </li>
+    <li>
+        I need to probably rework how I am generating the cup such that the rings could be printed seperately and the entire cup glued together, so you could more easily print the rings in different colors. Right now the rings are attached.
+    </li>
+    <li>
+        I need to have some logic when generating the cup such that it's gaurenteed to nest well, and not be loose. Currently, this is up to you to test manually.
+    </li>
+    <li>
+        When you generate an STL file, it may have errors when loaded into a slicer, but I believe that you could repair the errors with Meshmixer or some other utility, but it may not even be necessary. Try slicing it first to see.
+    </li>
+</ul>
+
+
+
 
 <h2>Viewer navigation</h2>
 Click and drag to rotate the model around the origin. Hold down Alt to change the axis of rotation.

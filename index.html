@@ -87,39 +87,39 @@ function loadExample(exampleNo)
     {
         case "1":
 
-            update_parameter("cup_inner_diameter", 60);
-            update_parameter("cup_top_height", 30);
-            update_parameter("cup_bottom_height", 30);
-            update_parameter("indent_outer_diameter", 30);
-            update_parameter("indent_inner_diameter", 10);
-            update_parameter("cup_top_squareness", 22);
-            update_parameter("cup_top_indent", 2);
-            update_parameter("material_thickness", 1);
+            update_parameter("cup_inner_diameter", 60.0);
+            update_parameter("cup_top_height", 30.0);
+            update_parameter("cup_bottom_height", 30.0);
+            update_parameter("indent_outer_diameter", 30.0);
+            update_parameter("indent_inner_diameter", 10.0);
+            update_parameter("cup_top_squareness", 22.0);
+            update_parameter("cup_top_indent", 2.0);
+            update_parameter("material_thickness", 1.0);
             update_parameter("number_of_rings", 3);
-            update_parameter("ring_spacing", 6);
+            update_parameter("ring_spacing", 6.0);
             update_parameter("ring_style", "ROOT");
-            update_parameter("ring_width", 3);
-            update_parameter("ring_height", 6);
-            update_parameter("ring_squareness", 2);
+            update_parameter("ring_width", 3.0);
+            update_parameter("ring_height", 6.0);
+            update_parameter("ring_squareness", 2.0);
             update_parameter("color", "SG");
             update_parameter("top_style", "S");
         break;
         case "2":
 
-            update_parameter("cup_inner_diameter", 60);
-            update_parameter("cup_top_height", 60);
-            update_parameter("cup_bottom_height", 25);
-            update_parameter("indent_outer_diameter", 35);
-            update_parameter("indent_inner_diameter", 10);
-            update_parameter("cup_top_squareness", 0);
-            update_parameter("cup_top_indent", 2);
-            update_parameter("material_thickness", 1);
-            update_parameter("number_of_rings", 1);
-            update_parameter("ring_spacing", 0);
+            update_parameter("cup_inner_diameter", 60.0);
+            update_parameter("cup_top_height", 60.0);
+            update_parameter("cup_bottom_height", 25.0);
+            update_parameter("indent_outer_diameter", 35.0);
+            update_parameter("indent_inner_diameter", 10.0);
+            update_parameter("cup_top_squareness", 0.0);
+            update_parameter("cup_top_indent", 2.0);
+            update_parameter("material_thickness", 1.0);
+            update_parameter("number_of_rings", 1.0);
+            update_parameter("ring_spacing", 0.0);
             update_parameter("ring_style", "POLY");
-            update_parameter("ring_width", 2);
-            update_parameter("ring_height", 27);
-            update_parameter("ring_squareness", 10);
+            update_parameter("ring_width", 2.0);
+            update_parameter("ring_height", 27.0);
+            update_parameter("ring_squareness", 10.0);
             update_parameter("color", "S");
             update_parameter("top_style", "S");
         break;
@@ -129,13 +129,13 @@ function loadExample(exampleNo)
             update_parameter("cup_bottom_height", 36.1);
             update_parameter("indent_outer_diameter", 37.77);
             update_parameter("indent_inner_diameter", 10.28);
-            update_parameter("cup_top_squareness", 20);
+            update_parameter("cup_top_squareness", 20.0);
             update_parameter("cup_top_indent", 2.5);
-            update_parameter("material_thickness", 1);
-            update_parameter("number_of_rings", 2);
-            update_parameter("ring_spacing", 6);
+            update_parameter("material_thickness", 1.0);
+            update_parameter("number_of_rings", 2.0);
+            update_parameter("ring_spacing", 6.0);
             update_parameter("ring_style", "SIN");
-            update_parameter("ring_width", 3);
+            update_parameter("ring_width", 3.0);
             update_parameter("ring_height", 6.72);
             update_parameter("ring_squareness", 2);
             update_parameter("color", "C");
@@ -153,7 +153,7 @@ function loadExample(exampleNo)
 <body onload="onload()">
 <span>
     <h1>Parametric Cup Generator</h1>
-    <h5>For the Cups and Balls Routine by Brandon Gruber - Last Updated 9/13/2021</h5>
+    <h5>For the Cups and Balls Routine by Brandon Gruber - Last Updated 9/16/2021</h5>
 </span>
 <button type="button" onclick="loadExample('1')">Foxian Cup</button><button type="button" onclick="loadExample('2')">Medieval Cup</button><button type="button" onclick="loadExample('3')">Regular</button>
 <div id="viewer"></div>
@@ -570,6 +570,25 @@ function cup_rounded_square(params)
 // Here we define the user editable parameters: 
 function getParameterDefinitions()
 {
+
+    let param_rounded_modifier_x_values = [];
+    let param_rounded_modifier_x_captions = [];
+    let param_rounded_modifier_y_values = [];
+    let param_rounded_modifier_y_captions = [];
+
+    /*since there is no support for range yet. I'll make this a drop down for now.*/
+    for(let i = 1; i <= 100; ++i)
+    {
+        let full =  "==============================";
+        let ammount = i * full.length / 100;
+        let bar = full.slice(0, ammount) + i;
+
+        param_rounded_modifier_x_values.push(i);
+        param_rounded_modifier_x_captions.push(bar);
+        param_rounded_modifier_y_values.push(i);
+        param_rounded_modifier_y_captions.push(bar);
+    }
+
   let params = [
     {
       name: 'render_quality',
@@ -579,15 +598,41 @@ function getParameterDefinitions()
       caption: 'Render Quality:',
       initial: "PREVIEW",
     },
-    { name: 'cup_inner_diameter', caption: 'Inside Diameter:', type: 'float', default: 60 },
-    { name: 'cup_top_height', caption: 'Top Height:', type: 'float', default: 30 },
-    { name: 'cup_bottom_height', caption: 'Bottom Height:', type: 'float', default: 30},
-    { name: 'indent_outer_diameter', caption: 'Top Indent Outer Diameter:', type: 'float', default: 30 },
-    { name: 'indent_inner_diameter', caption: 'Top Indent Inner Diameter:', type: 'float', default: 20 },
-    { name: 'cup_top_indent', caption: 'Top Indent Depth:', type: 'float', default: 2 },
-    { name: 'material_thickness', caption: 'Thickness', type: 'float', default: 1},
+    { name: 'cup_inner_diameter', caption: 'Inside Diameter (mm):', type: 'float', default: 60.0 },
+    { name: 'material_thickness', caption: 'Thickness (mm)', type: 'float', default: 1.0},
+    { name: 'cup_top_indent', caption: 'Top Indent Depth (mm):', type: 'float', default: 2.0 },
+    { name: 'indent_outer_diameter', caption: 'Top Indent Outer Diameter (mm):', type: 'float', default: 30.0 },
+    { name: 'indent_inner_diameter', caption: 'Top Indent Inner Diameter (mm):', type: 'float', default: 20.0 },
+    { name: 'magnet_height', caption: 'Chop-Cup Magnet Height (mm)(0 = Disabled):', type: 'float', default: 0},
+    { name: 'cup_top_height', caption: 'Top Height (mm):', type: 'float', default: 30.0 },
+    {
+      name: 'top_style',
+      type: 'choice',
+      values: ["S", "R"],
+      captions: ["Rounded-Square", "Rounded"],
+      caption: 'Top Curve Style:',
+      initial: "S",
+    },
+    { name: 'cup_top_squareness', caption: 'Top Style Rounded-Square Squareness (unitless coefficient):', type: 'int', default: 22.0},
+    {
+      name: 'rounded_top_x',
+      type: 'choice',
+      values: param_rounded_modifier_x_values,
+      captions: param_rounded_modifier_x_captions,
+      caption: 'Top Style Rounded Outward-Bend Ammount (Percentage):',
+      initial: 89,
+    },
+    {
+      name: 'rounded_top_y',
+      type: 'choice',
+      values: param_rounded_modifier_y_values,
+      captions: param_rounded_modifier_y_captions,
+      caption: 'Top Style Rounded Upward-Bend Ammount (Percentage):',
+      initial: 70,
+    },
+    { name: 'cup_bottom_height', caption: 'Bottom Height (mm):', type: 'float', default: 30.0},
     { name: 'number_of_rings', caption: 'Number Of Rings', type: 'int', default: 3},
-    { name: 'ring_spacing', caption: 'Ring Spacing', type: 'float', default: 6},
+    { name: 'ring_spacing', caption: 'Ring Spacing (mm)', type: 'float', default: 6.0},
     {
       name: 'ring_style',
       type: 'choice',
@@ -596,9 +641,9 @@ function getParameterDefinitions()
       caption: 'Ring Curve Style:',
       initial: "ROOT",
     },
-    { name: 'ring_width', caption: 'Ring Width:', type: 'float', default: 3},
-    { name: 'ring_height', caption: 'Ring Height:', type: 'float', default: 6},
-    { name: 'ring_squareness', caption: 'Ring Squareness:', type: 'float', default: 2},
+    { name: 'ring_width', caption: 'Ring Width (mm):', type: 'float', default: 3.0},
+    { name: 'ring_height', caption: 'Ring Height (mm):', type: 'float', default: 6.0},
+    { name: 'ring_squareness', caption: 'Ring Squareness (unitless coefficient):', type: 'float', default: 2.0},
     {
       name: 'color',
       type: 'choice',
@@ -607,53 +652,8 @@ function getParameterDefinitions()
       caption: 'Preview Color:',
       initial: "SG",
     },
-    {
-      name: 'top_style',
-      type: 'choice',
-      values: ["S", "R"],
-      captions: ["Rounded-Square", "Rounded"],
-      caption: 'Cup-Top Style:',
-      initial: "S",
-    },
-
-    { name: 'magnet_height', caption: 'Chop-Cup Magnet Height <b>(0:Disabled)</b>:', type: 'float', default: 3},
-    { name: 'cup_top_squareness', caption: '<b>Rounded-Square</b> Style Top Squareness:', type: 'int', default: 22},
   ];
 
-    let param_rounded_modifier_x = {
-      name: 'rounded_top_x',
-      type: 'choice',
-      values: [],
-      captions: [],
-      caption: '<b>Rounded-Top</b> Style Outward-Bend Ammount:',
-      initial: 89,
-    };
-
-
-    let param_rounded_modifier_y =
-    {
-      name: 'rounded_top_y',
-      type: 'choice',
-      values: [],
-      captions: [],
-      caption: '<b>Rounded-Top</b> Style Upward-Bend Ammount:',
-      initial: 70,
-    }
-    /*since there is no support for range yet. I'll make this a drop down for now.*/
-    for(let i = 1; i <= 100; ++i)
-    {
-        let full =  "==============================";
-        let ammount = i * full.length / 100;
-        let bar = full.slice(0, ammount) + i;
-
-        param_rounded_modifier_x.values.push(i);
-        param_rounded_modifier_x.captions.push(bar);
-        param_rounded_modifier_y.values.push(i);
-        param_rounded_modifier_y.captions.push(bar);
-    }
-
-    params.push(param_rounded_modifier_x);
-    params.push(param_rounded_modifier_y);
 
     return params;
 }
@@ -770,9 +770,6 @@ This is a page forked from the <a href="https://joostn.github.io/OpenJsCad/">Ope
 <ul>
     <li>
         Currently, the "Rounded" Cup-Top style is experimental as it doesn't work well with the way I am generating the chop-cup magnet cover, and the cup generated could be too thin depending on the shape, but it should be a better looking shape in the end.
-    </li>
-    <li>
-        I need to probably rework how I am generating the cup such that the rings could be printed seperately and the entire cup glued together, so you could more easily print the rings in different colors. Right now the rings are attached.
     </li>
     <li>
         I need to have some logic when generating the cup such that it's gaurenteed to nest well, and not be loose. Currently, this is up to you to test manually.
